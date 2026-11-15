@@ -1,0 +1,65 @@
+modules = ["web", "bash", "nodejs-22"]
+
+[deployment]
+router = "application"
+deploymentTarget = "autoscale"
+
+[deployment.postBuild]
+args = ["pnpm", "store", "prune"]
+env = { "CI" = "true" }
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "الأسطورة جان"
+
+[[workflows.workflow]]
+name = "الأسطورة جان"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd bot && node index.js"
+waitForPort = 3000
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[agent]
+stack = "PNPM_WORKSPACE"
+expertMode = true
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 20000
+
+[[ports]]
+localPort = 3000
+externalPort = 80
+
+[[ports]]
+localPort = 8080
+externalPort = 8080
+
+[[ports]]
+localPort = 8081
+externalPort = 8081
+
+[[ports]]
+localPort = 8082
+externalPort = 3000
+
+[[ports]]
+localPort = 8083
+externalPort = 3001
+
+[nix]
+channel = "stable-25_05"
+packages = ["util-linux", "yt-dlp", "deno"]
