@@ -321,6 +321,15 @@ async function handleMessage(api, event) {
     return;
   }
 
+  if (body === "kaydo" || body.startsWith("kaydo ")) {
+    const cmd = commands.get("kaydo");
+    if (cmd)
+      cmd
+        .execute(api, event)
+        .catch((e) => console.error("[KAYDO] خطأ في أمر kaydo:", e.message || e));
+    return;
+  }
+
 }
 
 function handleEvent(api, event) {
