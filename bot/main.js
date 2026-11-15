@@ -28,12 +28,12 @@ function loadCommands() {
       delete require.cache[require.resolve(path.join(commandsPath, file))];
       const cmd = require(path.join(commandsPath, file));
       commands.set(cmd.name, cmd);
-      console.log(`[الأسطورة جان] ✅ تم تحميل: ${cmd.name}`);
+      console.log(`[KAYDO] ✅ تم تحميل: ${cmd.name}`);
     } catch (e) {
-      console.error(`[الأسطورة جان] ❌ خطأ في تحميل ${file}:`, e.message);
+      console.error(`[KAYDO] ❌ خطأ في تحميل ${file}:`, e.message);
     }
   }
-  console.log(`[الأسطورة جان] تم تحميل ${commands.size} أمر.`);
+  console.log(`[KAYDO] تم تحميل ${commands.size} أمر.`);
 }
 
 async function handleMessage(api, event) {
@@ -44,7 +44,7 @@ async function handleMessage(api, event) {
   const senderID = String(event.senderID || "");
 
   console.log(
-    `[الأسطورة جان] 📩 رسالة من ${senderID} في ${threadID}: "${body.substring(0, 60)}"`,
+    `[KAYDO] 📩 رسالة من ${senderID} في ${threadID}: "${body.substring(0, 60)}"`,
   );
 
   if (/^زيد\s+(?:تشغيل|ايقاف|إيقاف)$/u.test(body)) {
@@ -53,7 +53,7 @@ async function handleMessage(api, event) {
       zedCommand
         .execute(api, event, isAdmin)
         .catch((e) =>
-          console.error("[الأسطورة جان] خطأ في أمر زيد:", e.message || e),
+          console.error("[KAYDO] خطأ في أمر زيد:", e.message || e),
         );
     }
     return;
@@ -64,7 +64,7 @@ async function handleMessage(api, event) {
     const handledByZed = await zedCommand
       .handleMessage(api, event)
       .catch((e) => {
-        console.error("[الأسطورة جان] خطأ في رد زيد:", e.message || e);
+        console.error("[KAYDO] خطأ في رد زيد:", e.message || e);
         return false;
       });
     if (handledByZed) return;
@@ -76,7 +76,7 @@ async function handleMessage(api, event) {
       const handled = await timerCmd
         .handleReply(api, event)
         .catch((e) => {
-          console.error("[الأسطورة جان] خطأ في المؤقت:", e.message || e);
+          console.error("[KAYDO] خطأ في المؤقت:", e.message || e);
           return false;
         });
       if (handled) return;
@@ -85,7 +85,7 @@ async function handleMessage(api, event) {
     const handled = await remoteControl
       .handleMessage(api, event, commands)
       .catch((e) => {
-        console.error("[الأسطورة جان] خطأ في التحكم عن بُعد:", e.message || e);
+        console.error("[KAYDO] خطأ في التحكم عن بُعد:", e.message || e);
         return true;
       });
     if (handled) return;
@@ -96,7 +96,7 @@ async function handleMessage(api, event) {
     remoteControl
       .startMenu(api, event, commands)
       .catch((e) =>
-        console.error("[الأسطورة جان] خطأ في قائمة الأوامر:", e.message || e),
+        console.error("[KAYDO] خطأ في قائمة الأوامر:", e.message || e),
       );
     return;
   }
@@ -108,7 +108,7 @@ async function handleMessage(api, event) {
       cmd
         .execute(api, event)
         .catch((e) =>
-          console.error("[الأسطورة جان] خطأ في أمر حالة:", e.message || e),
+          console.error("[KAYDO] خطأ في أمر حالة:", e.message || e),
         );
     }
     return;
@@ -138,12 +138,12 @@ async function handleMessage(api, event) {
       const emoji =
         REACTION_EMOJIS[Math.floor(Math.random() * REACTION_EMOJIS.length)];
       console.log(
-        `[الأسطورة جان] 🎯 رسالة #${next} في ${threadID} — تفاعل بـ ${emoji}`,
+        `[KAYDO] 🎯 رسالة #${next} في ${threadID} — تفاعل بـ ${emoji}`,
       );
       try {
         await api.setMessageReaction(emoji, event.messageID);
       } catch (e) {
-        console.error("[الأسطورة جان] خطأ في التفاعل:", e.message || e);
+        console.error("[KAYDO] خطأ في التفاعل:", e.message || e);
       }
     }
   }
@@ -154,7 +154,7 @@ async function handleMessage(api, event) {
     await replyCmd
       .checkAutoReply(api, event)
       .catch((e) =>
-        console.error("[الأسطورة جان] خطأ في checkAutoReply:", e.message),
+        console.error("[KAYDO] خطأ في checkAutoReply:", e.message),
       );
   }
 
@@ -166,7 +166,7 @@ async function handleMessage(api, event) {
       cmd
         .execute(api, event)
         .catch((e) =>
-          console.error("[الأسطورة جان] خطأ في تغير جريدة:", e.message || e),
+          console.error("[KAYDO] خطأ في تغير جريدة:", e.message || e),
         );
     return;
   }
@@ -177,7 +177,7 @@ async function handleMessage(api, event) {
     if (cmd)
       cmd
         .execute(api, event)
-        .catch((e) => console.error("[الأسطورة جان] خطأ في قصف:", e.message));
+        .catch((e) => console.error("[KAYDO] خطأ في قصف:", e.message));
     return;
   }
 
@@ -192,7 +192,7 @@ async function handleMessage(api, event) {
       cmd
         .execute(api, event)
         .catch((e) =>
-          console.error("[الأسطورة جان] خطأ في كاتش/مجموعة:", e.message),
+          console.error("[KAYDO] خطأ في كاتش/مجموعة:", e.message),
         );
     return;
   }
@@ -208,7 +208,7 @@ async function handleMessage(api, event) {
       cmd
         .execute(api, event)
         .catch((e) =>
-          console.error("[الأسطورة جان] خطأ في ماهوراغا:", e.message || e),
+          console.error("[KAYDO] خطأ في ماهوراغا:", e.message || e),
         );
     return;
   }
@@ -220,7 +220,7 @@ async function handleMessage(api, event) {
       cmd
         .execute(api, event)
         .catch((e) =>
-          console.error("[الأسطورة جان] خطأ في حذف كاتش:", e.message || e),
+          console.error("[KAYDO] خطأ في حذف كاتش:", e.message || e),
         );
     return;
   }
@@ -231,7 +231,7 @@ async function handleMessage(api, event) {
     if (cmd)
       cmd
         .execute(api, event)
-        .catch((e) => console.error("[الأسطورة جان] خطأ في رد:", e.message));
+        .catch((e) => console.error("[KAYDO] خطأ في رد:", e.message));
     return;
   }
 
@@ -242,7 +242,7 @@ async function handleMessage(api, event) {
       cmd
         .execute(api, event)
         .catch((e) =>
-          console.error("[الأسطورة جان] خطأ في بانكاي:", e.message || e),
+          console.error("[KAYDO] خطأ في بانكاي:", e.message || e),
         );
     return;
   }
@@ -254,7 +254,7 @@ async function handleMessage(api, event) {
       cmd
         .execute(api, event)
         .catch((e) =>
-          console.error("[الأسطورة جان] خطأ في السياجين:", e.message || e),
+          console.error("[KAYDO] خطأ في السياجين:", e.message || e),
         );
     return;
   }
@@ -266,7 +266,7 @@ async function handleMessage(api, event) {
       cmd
         .execute(api, event)
         .catch((e) =>
-          console.error("[الأسطورة جان] خطأ في تثبيت:", e.message || e),
+          console.error("[KAYDO] خطأ في تثبيت:", e.message || e),
         );
     return;
   }
@@ -278,7 +278,7 @@ async function handleMessage(api, event) {
       cmd
         .execute(api, event)
         .catch((e) =>
-          console.error("[الأسطورة جان] خطأ في تنظيف:", e.message || e),
+          console.error("[KAYDO] خطأ في تنظيف:", e.message || e),
         );
     return;
   }
@@ -290,7 +290,7 @@ async function handleMessage(api, event) {
       cmd
         .execute(api, event)
         .catch((e) =>
-          console.error("[الأسطورة جان] خطأ في المؤقت:", e.message || e),
+          console.error("[KAYDO] خطأ في المؤقت:", e.message || e),
         );
     return;
   }
@@ -304,7 +304,7 @@ async function handleMessage(api, event) {
     }
     const enabled = body === "تشغيل يوت";
     cmd.setEnabled(api, event, enabled).catch(async (e) => {
-      console.error("[الأسطورة جان] خطأ في تغيير حالة يوت:", e.message || e);
+      console.error("[KAYDO] خطأ في تغيير حالة يوت:", e.message || e);
       await api
         .sendMessage("❌ لم أستطع حفظ حالة أمر يوت.", threadID)
         .catch(() => {});
@@ -317,7 +317,7 @@ async function handleMessage(api, event) {
     if (cmd)
       cmd
         .execute(api, event)
-        .catch((e) => console.error("[الأسطورة جان] خطأ في يوت:", e.message));
+        .catch((e) => console.error("[KAYDO] خطأ في يوت:", e.message));
     return;
   }
 
@@ -331,13 +331,13 @@ function handleEvent(api, event) {
       .then((deleted) => {
         if (deleted) {
           console.log(
-            `[الأسطورة جان] 🗑️ حُذفت رسالتي بعد تفاعل المشرف بـ🪯 في ${event.threadID}`,
+            `[KAYDO] 🗑️ حُذفت رسالتي بعد تفاعل المشرف بـ🪯 في ${event.threadID}`,
           );
         }
       })
       .catch((e) =>
         console.error(
-          "[الأسطورة جان] تعذّر حذف الرسالة بعد التفاعل:",
+          "[KAYDO] تعذّر حذف الرسالة بعد التفاعل:",
           e.message || e,
         ),
       );
@@ -347,7 +347,7 @@ function handleEvent(api, event) {
   const logType = event.logMessageType || event.type || "";
   if (logType !== "read_receipt") {
     console.log(
-      `[الأسطورة جان] 📌 حدث: type=${event.type} | logType=${logType}`,
+      `[KAYDO] 📌 حدث: type=${event.type} | logType=${logType}`,
     );
   }
 
@@ -396,17 +396,17 @@ function handleEvent(api, event) {
       )
     ) {
       console.log(
-        `[الأسطورة جان] ✅ تمت إضافتي إلى المجموعة ${threadID} — جاري تعيين الكنية...`,
+        `[KAYDO] ✅ تمت إضافتي إلى المجموعة ${threadID} — جاري تعيين الكنية...`,
       );
       setTimeout(async () => {
         try {
           await api.nickname(BOT_NICKNAME, threadID, String(botID));
           console.log(
-            `[الأسطورة جان] ✅ تم تعيين الكنية في المجموعة ${threadID}`,
+            `[KAYDO] ✅ تم تعيين الكنية في المجموعة ${threadID}`,
           );
         } catch (e) {
           console.error(
-            `[الأسطورة جان] خطأ في تعيين الكنية بعد الانضمام:`,
+            `[KAYDO] خطأ في تعيين الكنية بعد الانضمام:`,
             e.message || e,
           );
         }
@@ -416,7 +416,7 @@ function handleEvent(api, event) {
     const zedCommand = commands.get("زيد");
     if (zedCommand && typeof zedCommand.handleJoinEvent === "function") {
       zedCommand.handleJoinEvent(api, event).catch((e) =>
-        console.error("[الأسطورة جان] خطأ في ترحيب زيد:", e.message || e),
+        console.error("[KAYDO] خطأ في ترحيب زيد:", e.message || e),
       );
     }
   }

@@ -1,7 +1,7 @@
 {
-  "name": "legend-jan-bot",
+  "name": "kaydo-bot",
   "version": "1.0.0",
-  "description": "بوت الأسطورة جان - بوت ماسنجر احترافي لا يتوقف",
+  "description": "kaydo - بوت ماسنجر سريع لا يفصل أبداً",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

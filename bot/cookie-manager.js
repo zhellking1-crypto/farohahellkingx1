@@ -1,43 +1,122 @@
+// ─── مدير الكوكيز kaydo ───
+// تقنيات مستوحاة من GoatBot-Pro:
+// 1) فحص حياة الكوكيز فعلياً عبر mbasic.facebook.com قبل أي إعادة دخول.
+// 2) حفظ الكوكيز بشكل آمن (كتابة ملف مؤقت ثم استبدال) بعد كل تغيير.
+// 3) لا يوجد عمر أقصى إجباري للجلسة — الكوكيز الصالحة تبقى مستخدمة.
+// 4) UserAgent ثابت مطابق للجلسة حتى لا يشتبك فيسبوك في تغيّر الجهاز.
 const fs = require('fs');
 const path = require('path');
 
-const SAVE_INTERVAL_MS = 5 * 60 * 1000; // كل 5 دقائق
-const KEEPALIVE_INTERVAL_MS = 3 * 60 * 60 * 1000; // كل 3 ساعات
-const MAX_COOKIE_AGE_HOURS = 48; // إعادة تسجيل دخول إجبارية بعد 48 ساعة
+const SAVE_INTERVAL_MS = 5 * 60 * 1000; // حفظ دوري كل 5 دقائق
+const CHECK_INTERVAL_MS = 30 * 60 * 1000; // فحص حياة الجلسة كل 30 دقيقة
+const COOKIE_CHECK_URL = 'https://mbasic.facebook.com/settings';
+const USER_AGENT =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36';
 
 const appstatePath = path.join(__dirname, 'appstate.json');
+const backupPath = path.join(__dirname, 'appstate.backup.json');
 
 let saveTimer = null;
-let keepaliveTimer = null;
+let checkTimer = null;
 let loginTime = null;
 let lastSaveAt = null;
+let lastCheckAt = null;
+let lastCheckOk = null;
 let currentApi = null;
 let onExpireCallback = null;
+let checking = false;
+
+function writeAppStateAtomic(state) {
+  const tmpPath = appstatePath + '.tmp';
+  fs.writeFileSync(tmpPath, JSON.stringify(state, null, 2));
+  fs.renameSync(tmpPath, appstatePath);
+  // نسخة احتياطية — لو تلف الملف الأساسي نرجع لها
+  try {
+    fs.copyFileSync(appstatePath, backupPath);
+  } catch (e) {}
+}
 
 function saveAppState(api, reason) {
   if (!api || typeof api.getAppState !== 'function') return false;
   try {
     const state = api.getAppState();
     if (!state || state.length === 0) return false;
-    const tmpPath = appstatePath + '.tmp';
-    fs.writeFileSync(tmpPath, JSON.stringify(state, null, 2));
-    fs.renameSync(tmpPath, appstatePath);
+    writeAppStateAtomic(state);
     lastSaveAt = Date.now();
-    console.log(`[COOKIE] 💾 حفظ الكوكيز (${state.length} عنصر) — ${reason || 'دوري'}`);
+    console.log(`[KAYDO COOKIE] 💾 حفظ الكوكيز (${state.length} عنصر) — ${reason || 'دوري'}`);
     return true;
   } catch (e) {
-    console.error(`[COOKIE] خطأ في حفظ الكوكيز:`, e.message || e);
+    console.error('[KAYDO COOKIE] خطأ في حفظ الكوكيز:', e.message || e);
     return false;
   }
 }
 
-function isLikelyExpired(api) {
+function restoreBackupIfMainMissing() {
   try {
-    if (!api || typeof api.getCurrentUserID !== 'function') return true;
-    const uid = api.getCurrentUserID();
-    return !uid;
+    if (!fs.existsSync(appstatePath) && fs.existsSync(backupPath)) {
+      fs.copyFileSync(backupPath, appstatePath);
+      console.log('[KAYDO COOKIE] 🟢 استُعيدت الكوكيز من النسخة الاحتياطية');
+      return true;
+    }
+  } catch (e) {}
+  return false;
+}
+
+function cookieStringFromApi(api) {
+  try {
+    const state = api.getAppState();
+    if (!Array.isArray(state)) return '';
+    return state
+      .map((c) => `${c.key || c.name}=${c.value}`)
+      .join('; ');
   } catch (e) {
+    return '';
+  }
+}
+
+// فحص حقيقي: هل الكوكيز ما زالت حية؟ (نفس طريقة GoatBot-Pro عبر mbasic)
+async function isCookieAlive(api) {
+  const cookieString = cookieStringFromApi(api);
+  if (!cookieString) return false;
+  try {
+    const res = await fetch(COOKIE_CHECK_URL, {
+      method: 'GET',
+      headers: {
+        cookie: cookieString,
+        'user-agent': USER_AGENT,
+        accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'accept-language': 'en-US,en;q=0.9',
+      },
+      redirect: 'manual',
+    });
+    const text = await res.text();
+    return (
+      text.includes('/privacy/xcs/action/logging/') ||
+      text.includes('/notifications.php?') ||
+      res.status < 302
+    );
+  } catch (e) {
+    // خطأ شبكة مؤقت ≠ موت الجلسة — نعتبرها حية حتى الفحص القادم
+    console.log('[KAYDO COOKIE] ⚠️ تعذر الفحص (شبكة) — نكمل بنفس الجلسة');
     return true;
+  }
+}
+
+async function runSessionCheck() {
+  if (checking || !currentApi) return;
+  checking = true;
+  try {
+    const alive = await isCookieAlive(currentApi);
+    lastCheckAt = Date.now();
+    lastCheckOk = alive;
+    if (!alive) {
+      console.log('[KAYDO COOKIE] 🔴 الكوكيز ماتت فعلاً — إعادة تسجيل دخول');
+      if (onExpireCallback) onExpireCallback();
+    } else {
+      saveAppState(currentApi, 'فحص الجلسة');
+    }
+  } finally {
+    checking = false;
   }
 }
 
@@ -45,35 +124,21 @@ function startCookieManager(api, options) {
   if (!api) return;
   currentApi = api;
   loginTime = Date.now();
-  onExpireCallback = (options && typeof options.onExpire === 'function') ? options.onExpire : null;
+  onExpireCallback =
+    options && typeof options.onExpire === 'function' ? options.onExpire : null;
+
+  restoreBackupIfMainMissing();
 
   if (saveTimer) clearInterval(saveTimer);
-  if (keepaliveTimer) clearInterval(keepaliveTimer);
+  if (checkTimer) clearInterval(checkTimer);
 
-  saveTimer = setInterval(() => {
-    saveAppState(currentApi, 'حفظ دوري');
-  }, SAVE_INTERVAL_MS);
+  saveTimer = setInterval(() => saveAppState(currentApi, 'حفظ دوري'), SAVE_INTERVAL_MS);
 
-  keepaliveTimer = setInterval(() => {
-    if (!currentApi) return;
+  checkTimer = setInterval(runSessionCheck, CHECK_INTERVAL_MS);
 
-    const ageHours = (Date.now() - loginTime) / (60 * 60 * 1000);
-    if (ageHours >= MAX_COOKIE_AGE_HOURS) {
-      console.log(`[COOKIE] ⏰ الجلسة عمرها ${ageHours.toFixed(1)} ساعة — تجديد إجباري`);
-      if (onExpireCallback) onExpireCallback();
-      return;
-    }
-
-    if (isLikelyExpired(currentApi)) {
-      console.log(`[COOKIE] ⚠️ الجلسة تبدو منتهية — إعادة تسجيل دخول`);
-      if (onExpireCallback) onExpireCallback();
-      return;
-    }
-
-    saveAppState(currentApi, 'فحص keepalive');
-  }, KEEPALIVE_INTERVAL_MS);
-
-  console.log(`[COOKIE] 🔄 تم تشغيل مدير الكوكيز (حفظ كل ${SAVE_INTERVAL_MS / 1000}ث / فحص كل ${KEEPALIVE_INTERVAL_MS / 3600000}س / حد أقصى ${MAX_COOKIE_AGE_HOURS}س)`);
+  console.log(
+    `[KAYDO COOKIE] 🔄 مدير الكوكيز يعمل — حفظ كل ${SAVE_INTERVAL_MS / 1000}ث / فحص حياة الجلسة كل ${CHECK_INTERVAL_MS / 60000} دقيقة`,
+  );
 }
 
 function stopCookieManager() {
@@ -81,13 +146,13 @@ function stopCookieManager() {
     clearInterval(saveTimer);
     saveTimer = null;
   }
-  if (keepaliveTimer) {
-    clearInterval(keepaliveTimer);
-    keepaliveTimer = null;
+  if (checkTimer) {
+    clearInterval(checkTimer);
+    checkTimer = null;
   }
   currentApi = null;
   onExpireCallback = null;
-  console.log(`[COOKIE] 🛑 تم إيقاف مدير الكوكيز`);
+  console.log('[KAYDO COOKIE] 🛑 تم إيقاف مدير الكوكيز');
 }
 
 function getCookieStatus() {
@@ -101,16 +166,19 @@ function getCookieStatus() {
     }
   } catch (e) {}
 
-  const sessionAgeHours = loginTime ? (Date.now() - loginTime) / (60 * 60 * 1000) : null;
+  const sessionAgeHours = loginTime
+    ? (Date.now() - loginTime) / (60 * 60 * 1000)
+    : null;
 
   return {
     loginTime: loginTime ? new Date(loginTime).toISOString() : null,
     sessionAgeHours: sessionAgeHours !== null ? Number(sessionAgeHours.toFixed(2)) : null,
     lastSaveAt: lastSaveAt ? new Date(lastSaveAt).toISOString() : null,
+    lastCheckAt: lastCheckAt ? new Date(lastCheckAt).toISOString() : null,
+    lastCheckOk,
     fileExists,
     cookieCount,
-    maxAgeHours: MAX_COOKIE_AGE_HOURS,
   };
 }
 
-module.exports = { startCookieManager, stopCookieManager, saveAppState, getCookieStatus };
+module.exports = { startCookieManager, stopCookieManager, saveAppState, getCookieStatus, restoreBackupIfMainMissing, isCookieAlive, USER_AGENT };
