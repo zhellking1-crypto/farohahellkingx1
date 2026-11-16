@@ -1,0 +1,27 @@
+{
+  "restartRateLimit": {
+    "windowMs": 600000,
+    "maxRestarts": 5,
+    "baseBackoffMs": 5000,
+    "maxBackoffMs": 300000
+  },
+  "keepAlive": {
+    "enable": true,
+    "intervalMs": 180000,
+    "url": null
+  },
+  "autoRestart": {
+    "enable": true,
+    "intervalMs": 3600000
+  },
+  "cookieManager": {
+    "saveIntervalMs": 300000,
+    "saveDebounceMs": 30000
+  },
+  "heartbeat": {
+    "intervalMs": 30000
+  },
+  "memorySweeper": {
+    "intervalMs": 600000
+  }
+}

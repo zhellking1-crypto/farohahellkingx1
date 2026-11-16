@@ -1,0 +1,21 @@
+{
+  "name": "kaydo-bot",
+  "version": "1.0.0",
+  "description": "kaydo - بوت ماسنجر سريع لا يفصل أبداً",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "@ffprobe-installer/linux-x64": "^5.2.0",
+    "canvas": "^3.2.3",
+    "dotenv": "^17.4.2",
+    "express": "^4.22.3",
+    "openai": "6.49.0",
+    "ws3-fca": "^3.5.2",
+    "ytpl": "^2.3.0"
+  }
+}
