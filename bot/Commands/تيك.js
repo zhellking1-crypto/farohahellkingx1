@@ -50,25 +50,70 @@ function createAvailability(statePath) {
   };
 }
 
-function downloadTikTokVideo(query, outFile) {
+function runYtDlp(args, timeoutMs) {
   return new Promise((resolve, reject) => {
-    const safeQuery = query.replace(/"/g, '\\"').replace(/`/g, '');
-
-    const cmd = `"${YTDL_PATH}" --no-playlist -o "${outFile}" "tiktoksearch1:${safeQuery}"`;
-
-    console.log(`[تيك] تنفيذ: ${cmd}`);
-
-    exec(cmd, { timeout: 120000 }, (err, stdout, stderr) => {
-      if (fs.existsSync(outFile) && fs.statSync(outFile).size > 0) {
-        resolve();
-      } else if (err) {
-        console.error(`[تيك] yt-dlp stderr:`, stderr || err.message);
+    exec(`"${YTDL_PATH}" ${args}`, { timeout: timeoutMs }, (err, stdout, stderr) => {
+      if (err) {
         reject(new Error(stderr || err.message));
       } else {
-        reject(new Error('الملف لم يُنشأ'));
+        resolve(stdout);
       }
     });
   });
+}
+
+// تيك توك يفشل أحياناً بطلبات متتابعة — كل خطوة يعاد محاولتها حتى 3 مرات
+async function retry(fn, attempts = 3, waitMs = 15000) {
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      console.error(`[تيك] محاولة ${i + 1}/${attempts} فشلت:`, (e.message || '').substring(0, 120));
+      if (i < attempts - 1) {
+        await new Promise((r) => setTimeout(r, waitMs));
+      }
+    }
+  }
+  throw lastErr;
+}
+
+async function fetchLatestVideoUrl(profileUrl) {
+  // القائمة المسطحة ترجع الروابط فقط دون تنزيل — أخف وأكثر موثوقية من تنزيل قائمة
+  const stdout = await runYtDlp(
+    `--no-playlist --flat-playlist --print "%(webpage_url)s" "${profileUrl}"`,
+    60000,
+  );
+  const firstUrl = stdout.split('\n').map((l) => l.trim()).find(Boolean);
+  if (!firstUrl) throw new Error('لا توجد فيديوهات في هذا الحساب');
+  return firstUrl;
+}
+
+async function downloadVideoFile(videoUrl, outFile) {
+  await runYtDlp(`--no-playlist -o "${outFile}" "${videoUrl}"`, 120000);
+  if (!fs.existsSync(outFile) || fs.statSync(outFile).size === 0) {
+    throw new Error('الملف لم يُنشأ');
+  }
+}
+
+function downloadTikTokVideo(query, outFile) {
+  // تيك توك لا يوفر بحث كلمات مجاني — نستخدم حساب المستخدم @handle ونجلب أحدث فيديو منه
+  const handle = query
+    .trim()
+    .replace(/^@+/, '')
+    .replace(/[^A-Za-z0-9._]/g, '');
+
+  if (!handle) {
+    return Promise.reject(new Error('اسم حساب غير صالح'));
+  }
+
+  const profileUrl = `https://www.tiktok.com/@${handle}`;
+  return retry(() => fetchLatestVideoUrl(profileUrl))
+    .then((videoUrl) => {
+      console.log(`[تيك] أحدث فيديو: ${videoUrl}`);
+      return retry(() => downloadVideoFile(videoUrl, outFile));
+    });
 }
 
 function createTiktokCommand({
@@ -123,7 +168,7 @@ function createTiktokCommand({
 
       try {
         await api.sendMessage(
-          `🎬 جاري البحث عن فيديو تيك توك: "${query}"...`,
+          `🎬 جاري جلب أحدث فيديو من الحساب @${query.replace(/^@+/, '')}...`,
           threadID
         );
       } catch (e) {}
