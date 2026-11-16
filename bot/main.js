@@ -356,7 +356,7 @@ async function handleMessage(api, event) {
     return;
   }
 
-  if (body === "kaydo" || body.startsWith("kaydo ")) {
+  if (/^kaydo(?:\s|$)/i.test(body)) {
     const cmd = commands.get("kaydo");
     if (cmd)
       cmd

@@ -12,8 +12,9 @@ function sleep(ms) {
 }
 
 function parseCommand(body) {
-  const text = body.trim();
-  if (text === "kaydo" || text === "kaydo off" || text === "kaydo ايقاف" || text === "kaydo إيقاف") {
+  const text = body.trim().replace(/^[kK][aA][yY][dD][oO]/, "kaydo");
+  if (/^kaydo\s*(off|ايقاف|إيقاف)?$/iu.test(text)) {
+    if (text === "kaydo") return null; // kaydo بدون شيء → رسالة الاستخدام
     return { action: "off" };
   }
 
@@ -77,10 +78,8 @@ module.exports = {
       if (state) {
         state.running = false;
         activeLoops.delete(threadID);
-        await api.sendMessage("⛧ 𝑲𝑨𝒀𝑫𝑶 ✦ تم إيقاف التكرار ✔", threadID);
-      } else {
-        await api.sendMessage("⚠️ لا يوجد تكرار شغال في هذه المحادثة.", threadID);
       }
+      await api.sendMessage("۩ تم تعطيل 𝑲𝑨𝒀𝑫𝑶 متوقف عن تكرار رسالة مطلوبة", threadID);
       return;
     }
 
@@ -96,12 +95,12 @@ module.exports = {
     activeLoops.set(threadID, state);
 
     try {
-      await api.sendMessage(message, threadID); // أول إرسال فوري
+      await api.sendMessage(parsed.message, threadID); // أول إرسال فوري
     } catch (e) {}
     loop(api, threadID);
 
     await api.sendMessage(
-      `⛧ 𝑲𝑨𝒀𝑫𝑶 ✦ جاري تكرار رسالتك كل ${parsed.seconds} ثانية\nللإيقاف: kaydo off`,
+      `تم تفعيل KAYDO في المجموعة\nالفاصل: ${parsed.seconds} ثانية.\nللإيقاف: kaydo off`,
       threadID,
     );
   },
